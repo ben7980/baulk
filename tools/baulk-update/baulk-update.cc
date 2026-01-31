@@ -33,7 +33,7 @@ Usage: baulk-update [option]
 Example:
   baulk-update                  # Update to the latest version released
   baulk-update -F               # Force update to latest version released 
-  baulk-update "-S4.0.0-beta.2" # Install the specified version
+  baulk-update "-S6.0.0"        # Install the specified version
 
 )";
   bela::terminal::WriteAuto(stderr, usage);

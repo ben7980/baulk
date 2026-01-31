@@ -107,9 +107,6 @@ bool Executor::ParseArgv(int argc, wchar_t **argv) {
         case 'k':
           HttpClient::DefaultClient().SetInsecureMode(true);
           break;
-        case 'd':
-          // ww.nocache = true;
-          break;
         case 'w':
           cwd = oa;
           break;

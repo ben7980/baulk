@@ -43,7 +43,7 @@ inline bela::error_code make_wsa_error_code(int code, std::wstring_view prefix =
   return ec;
 }
 
-using QUERY_CONTEXT = struct _QueryContext {
+struct QUERY_CONTEXT {
   OVERLAPPED QueryOverlapped;
   PADDRINFOEXW QueryResults{nullptr};
   HANDLE CompleteEvent{nullptr};

@@ -79,14 +79,14 @@ int64_t parseNumeric256(const char *_p, size_t char_cnt) {
   while (char_cnt > sizeof(int64_t)) {
     --char_cnt;
     if (c != neg) {
-      return (neg != 0u) ? INT64_MIN : INT64_MAX;
+      return (neg != 0U) ? INT64_MIN : INT64_MAX;
     }
     c = *++p;
   }
 
   /* c is first byte that fits; if sign mismatch, return overflow */
   if (((c ^ neg) & 0x80) != 0) {
-    return (neg != 0u) ? INT64_MIN : INT64_MAX;
+    return (neg != 0U) ? INT64_MIN : INT64_MAX;
   }
 
   /* Accumulate remaining bytes. */

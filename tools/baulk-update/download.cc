@@ -129,19 +129,19 @@ bool Executor::latest_download_url_fallback(const bela::version &ov) {
   size_t index = 0;
   auto content = resp->Content();
   for (;;) {
-    auto pos = content.find(urlPrefix, index);
-    if (pos == std::wstring::npos) {
+    auto p1 = content.find(urlPrefix, index);
+    if (p1 == std::wstring::npos) {
       bela::FPrintF(stderr, L"\x1b[33mbaulk/%s is up to date\x1b[0m\n", ov.make_string_version());
       return false;
     }
-    auto pos2 = content.find('"', pos);
-    if (pos2 == std::wstring::npos) {
+    auto p2 = content.find('"', p1);
+    if (p2 == std::wstring::npos) {
       bela::FPrintF(stderr, L"baulk upgrade get %s: \x1b[31minvalid html url\x1b[0m\n", ov.make_string_version());
       return false;
     }
-    auto filename = bela::encode_into<char, wchar_t>({content.data() + pos, pos2 - pos});
+    auto filename = bela::encode_into<char, wchar_t>({content.data() + p1, p2 - p1});
 
-    index = pos2 + 1;
+    index = p2 + 1;
     std::vector<std::wstring_view> svv = bela::StrSplit(filename, bela::ByChar('/'), bela::SkipEmpty());
     if (svv.size() <= 2) {
       continue;
@@ -167,15 +167,15 @@ std::optional<std::wstring> Executor::download_file() const {
     bela::FPrintF(stderr, L"baulk unable create directories %s error: %s\n", vfs::AppTemp(), ec);
     return std::nullopt;
   }
-  if (auto arfile = baulk::net::WinGet(download_url,
-                                       {
-                                           .hash_value = L"",
-                                           .cwd = baulk::vfs::AppTemp(),
-                                           .force_overwrite = true,
-                                       },
-                                       ec);
-      arfile) {
-    return arfile;
+  if (auto a = baulk::net::WinGet(download_url,
+                                  {
+                                      .hash_value = L"",
+                                      .cwd = baulk::vfs::AppTemp(),
+                                      .force_overwrite = true,
+                                  },
+                                  ec);
+      a) {
+    return a;
   }
   bela::FPrintF(stderr, L"baulk download %s error: \x1b[31m%s\x1b[0m\n", download_url, ec);
   return std::nullopt;

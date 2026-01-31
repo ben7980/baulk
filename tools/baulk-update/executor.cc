@@ -114,8 +114,8 @@ void Executor::cleanup() {
   SecureZeroMemory(&si, sizeof(si));
   SecureZeroMemory(&pi, sizeof(pi));
   si.cb = sizeof(si);
-  constexpr std::wstring_view command = L"sleep 1; rm -Force -ErrorAction SilentlyContinue baulk-update.del";
-  bela::EscapeArgv ea(L"powershell", L"-Command", command);
+  constexpr std::wstring_view command = L"sleep 1; Remove-Item -Force -ErrorAction SilentlyContinue baulk-update.del";
+  bela::EscapeArgv ea(L"pwsh", L"-Command", command);
   if (CreateProcessW(nullptr, ea.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
                      nullptr, vfs::AppLocationPath().data(), &si, &pi) != TRUE) {
     auto ec = bela::make_system_error_code();

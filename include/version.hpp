@@ -9,7 +9,7 @@
 #endif
 
 #ifndef BAULK_VERSION_MAJOR
-#define BAULK_VERSION_MAJOR 4
+#define BAULK_VERSION_MAJOR 6
 #endif
 
 #ifndef BAULK_VERSION_MINOR
@@ -25,7 +25,7 @@
 #endif
 
 #ifndef BAULK_VERSION
-#define BAULK_VERSION L"4.0.0"
+#define BAULK_VERSION L"6.0.0"
 #endif
 
 #ifndef BAULK_REVISION
@@ -60,11 +60,11 @@
 #endif
 
 #ifndef BAULK_APPVERSION
-#define BAULK_APPVERSION L"Version: 4.0.0\nCopyright \xA9 2023, Baulk contributors."
+#define BAULK_APPVERSION L"Version: 6.0.0\nCopyright \xA9 2026, Baulk contributors."
 #endif
 
 #ifndef BAULK_COPYRIGHT
-#define BAULK_COPYRIGHT L"Copyright \xA9 2023, Baulk contributors."
+#define BAULK_COPYRIGHT L"Copyright \xA9 2026, Baulk contributors."
 #endif
 
 #endif

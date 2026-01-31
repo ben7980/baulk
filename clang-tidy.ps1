@@ -118,7 +118,7 @@ $inputArgs = $(
     "-Ilib/archive/brotli/include",
     "-Ilib/archive/bzip2",
     "-Ilib/archive/ced",
-    "-Ilib/archive/chromium_zlib",
+    "-Ilib/archive/zlib",
     "-Ilib/archive/liblzma/api",
     "-Ilib/archive/zstd",
     "-Wall", 

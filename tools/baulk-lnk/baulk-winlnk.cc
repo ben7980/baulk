@@ -13,7 +13,7 @@ int WINAPI wWinMain(HINSTANCE /*unused*/, HINSTANCE /*unused*/, LPWSTR /*unused*
     return 1;
   }
   baulk::DbgPrint(L"resolve target: %s", *target);
-  auto isconsole = IsSubsytemConsole(*target);
+  auto isConsole = IsSubsytemConsole(*target);
   std::wstring newcmd(GetCommandLineW());
   STARTUPINFOW si;
   PROCESS_INFORMATION pi;
@@ -27,7 +27,7 @@ int WINAPI wWinMain(HINSTANCE /*unused*/, HINSTANCE /*unused*/, LPWSTR /*unused*
     return -1;
   }
   CloseHandle(pi.hThread);
-  if (!isconsole) {
+  if (!isConsole) {
     return 0;
   }
   WaitForSingleObject(pi.hProcess, INFINITE);

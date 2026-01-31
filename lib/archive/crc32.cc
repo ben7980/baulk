@@ -18,21 +18,23 @@
 
 #include <baulk/archive/details/crc32.h>
 
-#ifndef __LITTLE_ENDIAN
-#define __LITTLE_ENDIAN 1234
+#ifndef CRC32_LITTLE_ENDIAN
+#define CRC32_LITTLE_ENDIAN 1234
 #endif
-#ifndef __BIG_ENDIAN
-#define __BIG_ENDIAN 4321
+#ifndef CRC32_BIG_ENDIAN
+#define CRC32_BIG_ENDIAN 4321
 #endif
 
 // define endianess and some integer data types
 #if defined(_MSC_VER) || defined(__MINGW32__)
 // Windows always little endian
-#define __BYTE_ORDER __LITTLE_ENDIAN
+#define CRC32_BYTE_ORDER CRC32_LITTLE_ENDIAN
 
 #if defined(_M_AMD64) || defined(_M_IX86)
 // intrinsics / prefetching
 #include <xmmintrin.h>
+
+#include <utility>
 #ifdef __MINGW32__
 #define PREFETCH(location) __builtin_prefetch(location)
 #else
@@ -45,7 +47,7 @@
 #endif
 
 #else
-// defines __BYTE_ORDER as __LITTLE_ENDIAN or __BIG_ENDIAN
+// defines CRC32_BYTE_ORDER as CRC32_LITTLE_ENDIAN or CRC32_BIG_ENDIAN
 #include <sys/param.h>
 
 // intrinsics / prefetching
@@ -58,8 +60,8 @@
 #endif
 
 // abort if byte order is undefined
-#if !defined(__BYTE_ORDER)
-#error undefined byte order, compile with -D__BYTE_ORDER=1234 (if little endian) or -D__BYTE_ORDER=4321 (big endian)
+#if !defined(CRC32_BYTE_ORDER)
+#error undefined byte order, compile with -DCRC32_BYTE_ORDER=1234 (if little endian) or -DCRC32_BYTE_ORDER=4321 (big endian)
 #endif
 
 namespace {
@@ -67,7 +69,7 @@ namespace {
 const uint32_t Polynomial = 0xEDB88320;
 
 /// swap endianess
-static inline uint32_t swap(uint32_t x) {
+inline uint32_t swap(uint32_t x) {
 #if defined(__GNUC__) || defined(__clang__)
   return __builtin_bswap32(x);
 #else
@@ -98,7 +100,7 @@ extern const uint32_t Crc32Lookup[MaxSlice][256]; // extern is needed to keep co
 /// compute CRC32 (bitwise algorithm)
 uint32_t crc32_bitwise(const void *data, size_t length, uint32_t previousCrc32) {
   uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
-  const uint8_t *current = (const uint8_t *)data;
+  const auto *current = (const uint8_t *)data;
 
   while (length-- != 0) {
     crc ^= *current++;
@@ -121,7 +123,7 @@ uint32_t crc32_bitwise(const void *data, size_t length, uint32_t previousCrc32) 
 /// compute CRC32 (half-byte algoritm)
 uint32_t crc32_halfbyte(const void *data, size_t length, uint32_t previousCrc32) {
   uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
-  const uint8_t *current = (const uint8_t *)data;
+  const auto *current = (const uint8_t *)data;
 
   /// look-up table for half-byte, same as crc32Lookup[0][16*i]
   static const uint32_t Crc32Lookup16[16] = {0x00000000, 0x1DB71064, 0x3B6E20C8, 0x26D930AC, 0x76DC4190, 0x6B6B51F4,
@@ -141,10 +143,11 @@ uint32_t crc32_halfbyte(const void *data, size_t length, uint32_t previousCrc32)
 /// compute CRC32 (standard algorithm)
 uint32_t crc32_1byte(const void *data, size_t length, uint32_t previousCrc32) {
   uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
-  const uint8_t *current = (const uint8_t *)data;
+  const auto *current = (const uint8_t *)data;
 
-  while (length-- != 0)
+  while (length-- != 0) {
     crc = (crc >> 8) ^ Crc32Lookup[0][(crc & 0xFF) ^ *current++];
+  }
 
   return ~crc; // same as crc ^ 0xFFFFFFFF
 }
@@ -153,7 +156,7 @@ uint32_t crc32_1byte(const void *data, size_t length, uint32_t previousCrc32) {
 /// compute CRC32 (byte algorithm) without lookup tables
 uint32_t crc32_1byte_tableless(const void *data, size_t length, uint32_t previousCrc32) {
   uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
-  const uint8_t *current = (const uint8_t *)data;
+  const auto *current = (const uint8_t *)data;
 
   while (length-- != 0) {
     uint8_t s = uint8_t(crc) ^ *current++;
@@ -198,7 +201,7 @@ uint32_t crc32_1byte_tableless(const void *data, size_t length, uint32_t previou
 /// compute CRC32 (byte algorithm) without lookup tables
 uint32_t crc32_1byte_tableless2(const void *data, size_t length, uint32_t previousCrc32) {
   int32_t crc = ~previousCrc32; // note: signed integer, right shift distributes sign bit into lower bits
-  const uint8_t *current = (const uint8_t *)data;
+  const auto *current = (const uint8_t *)data;
 
   while (length-- != 0) {
     crc = crc ^ *current++;
@@ -219,11 +222,11 @@ uint32_t crc32_1byte_tableless2(const void *data, size_t length, uint32_t previo
 /// compute CRC32 (Slicing-by-4 algorithm)
 uint32_t crc32_4bytes(const void *data, size_t length, uint32_t previousCrc32) {
   uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
-  const uint32_t *current = (const uint32_t *)data;
+  const auto *current = (const uint32_t *)data;
 
   // process four bytes at once (Slicing-by-4)
   while (length >= 4) {
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if CRC32_BYTE_ORDER == CRC32_BIG_ENDIAN
     uint32_t one = *current++ ^ swap(crc);
     crc = Crc32Lookup[0][one & 0xFF] ^ Crc32Lookup[1][(one >> 8) & 0xFF] ^ Crc32Lookup[2][(one >> 16) & 0xFF] ^
           Crc32Lookup[3][(one >> 24) & 0xFF];
@@ -236,10 +239,11 @@ uint32_t crc32_4bytes(const void *data, size_t length, uint32_t previousCrc32) {
     length -= 4;
   }
 
-  const uint8_t *currentChar = (const uint8_t *)current;
+  const auto *currentChar = (const uint8_t *)current;
   // remaining 1 to 3 bytes (standard algorithm)
-  while (length-- != 0)
+  while (length-- != 0) {
     crc = (crc >> 8) ^ Crc32Lookup[0][(crc & 0xFF) ^ *currentChar++];
+  }
 
   return ~crc; // same as crc ^ 0xFFFFFFFF
 }
@@ -249,11 +253,11 @@ uint32_t crc32_4bytes(const void *data, size_t length, uint32_t previousCrc32) {
 /// compute CRC32 (Slicing-by-8 algorithm)
 uint32_t crc32_8bytes(const void *data, size_t length, uint32_t previousCrc32) {
   uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
-  const uint32_t *current = (const uint32_t *)data;
+  const auto *current = (const uint32_t *)data;
 
   // process eight bytes at once (Slicing-by-8)
   while (length >= 8) {
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if CRC32_BYTE_ORDER == CRC32_BIG_ENDIAN
     uint32_t one = *current++ ^ swap(crc);
     uint32_t two = *current++;
     crc = Crc32Lookup[0][two & 0xFF] ^ Crc32Lookup[1][(two >> 8) & 0xFF] ^ Crc32Lookup[2][(two >> 16) & 0xFF] ^
@@ -270,10 +274,11 @@ uint32_t crc32_8bytes(const void *data, size_t length, uint32_t previousCrc32) {
     length -= 8;
   }
 
-  const uint8_t *currentChar = (const uint8_t *)current;
+  const auto *currentChar = (const uint8_t *)current;
   // remaining 1 to 7 bytes (standard algorithm)
-  while (length-- != 0)
+  while (length-- != 0) {
     crc = (crc >> 8) ^ Crc32Lookup[0][(crc & 0xFF) ^ *currentChar++];
+  }
 
   return ~crc; // same as crc ^ 0xFFFFFFFF
 }
@@ -281,7 +286,7 @@ uint32_t crc32_8bytes(const void *data, size_t length, uint32_t previousCrc32) {
 /// compute CRC32 (Slicing-by-8 algorithm), unroll inner loop 4 times
 uint32_t crc32_4x8bytes(const void *data, size_t length, uint32_t previousCrc32) {
   uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
-  const uint32_t *current = (const uint32_t *)data;
+  const auto *current = (const uint32_t *)data;
 
   // enabling optimization (at least -O2) automatically unrolls the inner for-loop
   const size_t Unroll = 4;
@@ -290,7 +295,7 @@ uint32_t crc32_4x8bytes(const void *data, size_t length, uint32_t previousCrc32)
   // process 4x eight bytes at once (Slicing-by-8)
   while (length >= BytesAtOnce) {
     for (size_t unrolling = 0; unrolling < Unroll; unrolling++) {
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if CRC32_BYTE_ORDER == CRC32_BIG_ENDIAN
       uint32_t one = *current++ ^ swap(crc);
       uint32_t two = *current++;
       crc = Crc32Lookup[0][two & 0xFF] ^ Crc32Lookup[1][(two >> 8) & 0xFF] ^ Crc32Lookup[2][(two >> 16) & 0xFF] ^
@@ -308,10 +313,11 @@ uint32_t crc32_4x8bytes(const void *data, size_t length, uint32_t previousCrc32)
     length -= BytesAtOnce;
   }
 
-  const uint8_t *currentChar = (const uint8_t *)current;
+  const auto *currentChar = (const uint8_t *)current;
   // remaining 1 to 31 bytes (standard algorithm)
-  while (length-- != 0)
+  while (length-- != 0) {
     crc = (crc >> 8) ^ Crc32Lookup[0][(crc & 0xFF) ^ *currentChar++];
+  }
 
   return ~crc; // same as crc ^ 0xFFFFFFFF
 }
@@ -321,7 +327,7 @@ uint32_t crc32_4x8bytes(const void *data, size_t length, uint32_t previousCrc32)
 /// compute CRC32 (Slicing-by-16 algorithm)
 uint32_t crc32_16bytes(const void *data, size_t length, uint32_t previousCrc32) {
   uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
-  const uint32_t *current = (const uint32_t *)data;
+  const auto *current = (const uint32_t *)data;
 
   // enabling optimization (at least -O2) automatically unrolls the inner for-loop
   const size_t Unroll = 4;
@@ -329,7 +335,7 @@ uint32_t crc32_16bytes(const void *data, size_t length, uint32_t previousCrc32) 
 
   while (length >= BytesAtOnce) {
     for (size_t unrolling = 0; unrolling < Unroll; unrolling++) {
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if CRC32_BYTE_ORDER == CRC32_BIG_ENDIAN
       uint32_t one = *current++ ^ swap(crc);
       uint32_t two = *current++;
       uint32_t three = *current++;
@@ -357,10 +363,11 @@ uint32_t crc32_16bytes(const void *data, size_t length, uint32_t previousCrc32) 
     length -= BytesAtOnce;
   }
 
-  const uint8_t *currentChar = (const uint8_t *)current;
+  const auto *currentChar = (const uint8_t *)current;
   // remaining 1 to 63 bytes (standard algorithm)
-  while (length-- != 0)
+  while (length-- != 0) {
     crc = (crc >> 8) ^ Crc32Lookup[0][(crc & 0xFF) ^ *currentChar++];
+  }
 
   return ~crc; // same as crc ^ 0xFFFFFFFF
 }
@@ -371,7 +378,7 @@ uint32_t crc32_16bytes_prefetch(const void *data, size_t length, uint32_t previo
   // 256 bytes look-ahead seems to be the sweet spot on Core i7 CPUs
 
   uint32_t crc = ~previousCrc32; // same as previousCrc32 ^ 0xFFFFFFFF
-  const uint32_t *current = (const uint32_t *)data;
+  const auto *current = (const uint32_t *)data;
 
   // enabling optimization (at least -O2) automatically unrolls the for-loop
   const size_t Unroll = 4;
@@ -381,7 +388,7 @@ uint32_t crc32_16bytes_prefetch(const void *data, size_t length, uint32_t previo
     PREFETCH(((const char *)current) + prefetchAhead);
 
     for (size_t unrolling = 0; unrolling < Unroll; unrolling++) {
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if CRC32_BYTE_ORDER == CRC32_BIG_ENDIAN
       uint32_t one = *current++ ^ swap(crc);
       uint32_t two = *current++;
       uint32_t three = *current++;
@@ -409,10 +416,11 @@ uint32_t crc32_16bytes_prefetch(const void *data, size_t length, uint32_t previo
     length -= BytesAtOnce;
   }
 
-  const uint8_t *currentChar = (const uint8_t *)current;
+  const auto *currentChar = (const uint8_t *)current;
   // remaining 1 to 63 bytes (standard algorithm)
-  while (length-- != 0)
+  while (length-- != 0) {
     crc = (crc >> 8) ^ Crc32Lookup[0][(crc & 0xFF) ^ *currentChar++];
+  }
 
   return ~crc; // same as crc ^ 0xFFFFFFFF
 }
@@ -463,8 +471,9 @@ uint32_t crc32_combine(uint32_t crcA, uint32_t crcB, size_t lengthB) {
   // - performance-wise there isn't any differenze to the original zlib/pigz code
 
   // degenerated case
-  if (lengthB == 0)
+  if (lengthB == 0) {
     return crcA;
+  }
 
   /// CRC32 => 32 bits
   const uint32_t CrcBits = 32;
@@ -474,26 +483,31 @@ uint32_t crc32_combine(uint32_t crcA, uint32_t crcB, size_t lengthB) {
 
   // put operator for one zero bit in odd
   odd[0] = Polynomial; // CRC-32 polynomial
-  for (int i = 1; i < CrcBits; i++)
+  for (int i = 1; std::cmp_less(i, CrcBits); i++) {
     odd[i] = 1 << (i - 1);
+  }
 
   // put operator for two zero bits in even
   // same as gf2_matrix_square(even, odd);
-  for (int i = 0; i < CrcBits; i++) {
+  for (int i = 0; std::cmp_less(i, CrcBits); i++) {
     uint32_t vec = odd[i];
     even[i] = 0;
-    for (int j = 0; vec != 0; j++, vec >>= 1)
-      if (vec & 1)
+    for (int j = 0; vec != 0; j++, vec >>= 1) {
+      if ((vec & 1) != 0u) {
         even[i] ^= odd[j];
+      }
+    }
   }
   // put operator for four zero bits in odd
   // same as gf2_matrix_square(odd, even);
-  for (int i = 0; i < CrcBits; i++) {
+  for (int i = 0; std::cmp_less(i, CrcBits); i++) {
     uint32_t vec = even[i];
     odd[i] = 0;
-    for (int j = 0; vec != 0; j++, vec >>= 1)
-      if (vec & 1)
+    for (int j = 0; vec != 0; j++, vec >>= 1) {
+      if ((vec & 1) != 0u) {
         odd[i] ^= even[j];
+      }
+    }
   }
 
   // the following loop becomes much shorter if I keep swapping even and odd
@@ -502,21 +516,25 @@ uint32_t crc32_combine(uint32_t crcA, uint32_t crcB, size_t lengthB) {
   // apply secondLength zeros to firstCrc32
   for (; lengthB > 0; lengthB >>= 1) {
     // same as gf2_matrix_square(a, b);
-    for (int i = 0; i < CrcBits; i++) {
+    for (int i = 0; std::cmp_less(i, CrcBits); i++) {
       uint32_t vec = b[i];
       a[i] = 0;
-      for (int j = 0; vec != 0; j++, vec >>= 1)
-        if (vec & 1)
+      for (int j = 0; vec != 0; j++, vec >>= 1) {
+        if ((vec & 1) != 0u) {
           a[i] ^= b[j];
+        }
+      }
     }
 
     // apply zeros operator for this bit
-    if (lengthB & 1) {
+    if ((lengthB & 1) != 0u) {
       // same as firstCrc32 = gf2_matrix_times(a, firstCrc32);
       uint32_t sum = 0;
-      for (int i = 0; crcA != 0; i++, crcA >>= 1)
-        if (crcA & 1)
+      for (int i = 0; crcA != 0; i++, crcA >>= 1) {
+        if ((crcA & 1) != 0u) {
           sum ^= a[i];
+        }
+      }
       crcA = sum;
     }
 
